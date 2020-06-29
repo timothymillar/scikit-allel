@@ -562,7 +562,7 @@ class Genotypes(NumpyArrayWrapper):
 
         allele1 = self.values[..., 0, np.newaxis]
         other_alleles = self.values[..., 1:]
-        tmp = (allele1 > 0) & (allele1 == other_alleles)
+        tmp = (allele1 > 0) & ((allele1 == other_alleles) | (other_alleles == -2))
         out = np.all(tmp, axis=-1)
 
         # handle mask
