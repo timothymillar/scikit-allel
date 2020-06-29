@@ -608,7 +608,7 @@ class Genotypes(NumpyArrayWrapper):
 
         allele1 = self.values[..., 0, np.newaxis]  # type: np.ndarray
         other_alleles = self.values[..., 1:]  # type: np.ndarray
-        out = np.all(self.values >= 0, axis=-1) & np.any(allele1 != other_alleles, axis=-1)
+        out = np.all(self.values != -1, axis=-1) & np.any((allele1 != other_alleles) & (other_alleles != -2), axis=-1)
         if allele is not None:
             out &= np.any(self.values == allele, axis=-1)
 
