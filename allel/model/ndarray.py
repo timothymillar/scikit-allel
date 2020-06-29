@@ -373,6 +373,39 @@ class Genotypes(NumpyArrayWrapper):
 
         return out
 
+    def sitewise_ploidy(self, axis=None, fill=-1):
+        """Site-wise ploidy for mixed-ploidy genotypes.
+
+        Parameters
+        ----------
+        axis : int, optional
+            Return ploidy values along a an axis if all values
+            are equal.
+        fill : int, optional
+            Value indicating that ploidy values are not equal
+            along the specified axis.
+
+        Returns
+        -------
+        ploidy : array_like, int
+            Ploidy at each site.
+        
+        """
+        max_ploidy = self.shape[-1]
+        sitewise = max_ploidy - (self.values == -2).sum(axis=-1)
+
+        if axis is None:
+            return sitewise
+
+        elif axis == 0:
+            ploidy = sitewise[0, ...]
+        elif axis == 1:
+            ploidy = sitewise[..., 0, np.newaxis]
+
+        equal = (ploidy == sitewise).all(axis=axis)
+        ploidy[~equal] = fill
+        return ploidy.ravel()
+
     def is_called(self):
         """Find non-missing genotype calls.
 
