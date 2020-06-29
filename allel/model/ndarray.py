@@ -216,7 +216,7 @@ class Genotypes(NumpyArrayWrapper):
     @property
     def n_allele_calls(self):
         """Total number of allele calls."""
-        return np.prod(self.shape)
+        return np.sum(self > -2)
 
     @property
     def n_calls(self):
@@ -402,7 +402,7 @@ class Genotypes(NumpyArrayWrapper):
 
         """
 
-        out = np.all(self.values >= 0, axis=-1)
+        out = np.all(self.values != -1, axis=-1)
 
         # handle mask
         if self.mask is not None:
@@ -439,7 +439,7 @@ class Genotypes(NumpyArrayWrapper):
 
         """
 
-        out = np.any(self.values < 0, axis=-1)
+        out = np.any(self.values == -1, axis=-1)
 
         # handle mask
         if self.mask is not None:
