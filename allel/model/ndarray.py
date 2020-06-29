@@ -488,10 +488,10 @@ class Genotypes(NumpyArrayWrapper):
         if allele is None:
             allele1 = self.values[..., 0, np.newaxis]
             other_alleles = self.values[..., 1:]
-            tmp = (allele1 >= 0) & (allele1 == other_alleles)
+            tmp = (allele1 >= 0) & ((allele1 == other_alleles) | (other_alleles == -2))
             out = np.all(tmp, axis=-1)
         else:
-            out = np.all(self.values == allele, axis=-1)
+            out = np.all((self.values == allele) | (self.values == -2), axis=-1)
 
         # handle mask
         if self.mask is not None:
