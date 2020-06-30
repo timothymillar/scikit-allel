@@ -396,7 +396,7 @@ class Genotypes(NumpyArrayWrapper):
         
         """
         max_ploidy = self.shape[-1]
-        sitewise = max_ploidy - (self.values == -2).sum(axis=-1)
+        sitewise = max_ploidy - (self.values <= -2).sum(axis=-1)
 
         if axis is None:
             return sitewise
@@ -525,10 +525,10 @@ class Genotypes(NumpyArrayWrapper):
         if allele is None:
             allele1 = self.values[..., 0, np.newaxis]
             other_alleles = self.values[..., 1:]
-            tmp = (allele1 >= 0) & ((allele1 == other_alleles) | (other_alleles == -2))
+            tmp = (allele1 >= 0) & ((allele1 == other_alleles) | (other_alleles <= -2))
             out = np.all(tmp, axis=-1)
         else:
-            out = np.all((self.values == allele) | (self.values == -2), axis=-1)
+            out = np.all((self.values == allele) | (self.values <= -2), axis=-1)
 
         # handle mask
         if self.mask is not None:
@@ -599,7 +599,7 @@ class Genotypes(NumpyArrayWrapper):
 
         allele1 = self.values[..., 0, np.newaxis]
         other_alleles = self.values[..., 1:]
-        tmp = (allele1 > 0) & ((allele1 == other_alleles) | (other_alleles == -2))
+        tmp = (allele1 > 0) & ((allele1 == other_alleles) | (other_alleles <= -2))
         out = np.all(tmp, axis=-1)
 
         # handle mask
@@ -645,7 +645,7 @@ class Genotypes(NumpyArrayWrapper):
 
         allele1 = self.values[..., 0, np.newaxis]  # type: np.ndarray
         other_alleles = self.values[..., 1:]  # type: np.ndarray
-        out = np.all(self.values != -1, axis=-1) & np.any((allele1 != other_alleles) & (other_alleles != -2), axis=-1)
+        out = np.all(self.values != -1, axis=-1) & np.any((allele1 != other_alleles) & (other_alleles > -2), axis=-1)
         if allele is not None:
             out &= np.any(self.values == allele, axis=-1)
 
