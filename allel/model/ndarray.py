@@ -327,7 +327,7 @@ class Genotypes(NumpyArrayWrapper):
             check_shape(is_phased, self.shape[:-1])
         self._is_phased = is_phased
 
-    def fill_masked(self, value=-1, copy=True):
+    def fill_masked(self, value=-1, copy=True, fill_padding=False):
         """Fill masked genotype calls with a given value.
 
         Parameters
@@ -336,6 +336,8 @@ class Genotypes(NumpyArrayWrapper):
             The fill value.
         copy : bool, optional
             If False, modify the array in place.
+        fill_padding : bool, optional
+            If True values <= -2 will be replaced with value.
 
         Returns
         -------
@@ -365,7 +367,12 @@ class Genotypes(NumpyArrayWrapper):
 
         # apply the mask
         data = np.array(self.values, copy=copy)
-        data[self.mask, ...] = value
+
+        if fill_padding:
+            data[self.mask, ...] = value
+        else:
+            # exclude padding from mask
+            data[self.mask[..., np.newaxis] & (self.values > -2)] = value
 
         if copy:
             out = type(self)(data)  # wrap
