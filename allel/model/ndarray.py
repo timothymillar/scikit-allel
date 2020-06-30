@@ -410,6 +410,25 @@ class Genotypes(NumpyArrayWrapper):
         ploidy[~equal] = fill
         return ploidy.ravel()
 
+    def is_padded(self):
+        """Find genotype calls of any ploidy that is less than 
+        the maximum ploidy of this array.
+
+        Returns
+        -------
+        out : ndarray, bool, shape (n_variants, n_samples)
+            Array where elements are True if the genotype call is
+            padded with values of -2.  
+
+        """
+        out = np.any(self.values <= -2, axis=-1)
+
+        # handle mask
+        if self.mask is not None:
+            out &= ~self.mask
+
+        return out
+
     def is_called(self):
         """Find non-missing genotype calls.
 
