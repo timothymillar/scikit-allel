@@ -211,7 +211,11 @@ class Genotypes(NumpyArrayWrapper):
     @property
     def ploidy(self):
         """Sample ploidy."""
-        return self.shape[-1]
+        ploidy = self.sitewise_ploidy().ravel()
+        if np.all(ploidy[0] == ploidy):
+            return ploidy[0]
+        else:
+            return -1
 
     @property
     def n_allele_calls(self):
