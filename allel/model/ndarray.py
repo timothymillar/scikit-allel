@@ -1057,6 +1057,7 @@ class Genotypes(NumpyArrayWrapper):
         if max_allele <= 0:
             max_allele = 1
         nchar = int(np.floor(np.log10(max_allele))) + 1
+        max_ploidy = self.values.shape[-1]
 
         # convert to string
         a = self.astype((np.string_, nchar)).view(np.chararray)
@@ -1066,18 +1067,36 @@ class Genotypes(NumpyArrayWrapper):
         if self.mask is not None:
             a[self.mask] = b'.'
 
-        # determine allele call separator
-        if self.is_phased is None:
-            sep = b'/'
-        else:
-            sep = np.empty(self.shape[:-1], dtype='S1').view(np.chararray)
-            sep[self.is_phased] = b'|'
-            sep[~self.is_phased] = b'/'
+        # blank out mixed ploidy padding values
+        mixed_ploidy = np.where(self.values <= -2)
+        if np.any(mixed_ploidy):
+            a[mixed_ploidy] = b''
 
-        # join via separator, coping with any ploidy
+        # determine allele call separator
+        if (self.is_phased is None) and not np.any(mixed_ploidy):
+            sep = np.zeros(max_ploidy, dtype='|S1')
+            sep[:] = b'/'
+        else:
+            sep = np.empty(self.shape, dtype='|S1')
+            sep[:] = b'/'
+            if self.is_phased is not None:
+                sep[self.is_phased] = b'|'
+            if np.any(mixed_ploidy):
+                # get sep in frount of padding
+                padding_sep = mixed_ploidy[-1]
+                padding_sep -= 1
+                sep[mixed_ploidy] = b''
+        
+        # remove the trailing seperator(s)
+        sep[...,-1] = b''
+
+        # combine alleles with seperators
+        a = a + sep
+
+        # join alleles
         gt = a[..., 0]
-        for i in range(1, self.ploidy):
-            gt = gt + sep + a[..., i]
+        for i in range(1, self.shape[-1]):
+            gt = gt + a[..., i]
 
         return gt
 
