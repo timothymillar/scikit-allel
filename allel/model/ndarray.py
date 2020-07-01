@@ -207,11 +207,27 @@ class Genotypes(NumpyArrayWrapper):
         check_integer_dtype(self.values)
         self._mask = None
         self._is_phased = None
+        self._ploidy = None
 
     @property
     def ploidy(self):
         """Sample ploidy."""
-        return self.shape[-1]
+        if self._ploidy is None:
+            return self.shape[-1]
+        else:
+            return self._ploidy
+
+    @ploidy.setter
+    def ploidy(self, ploidy):
+        if (np.shape(ploidy) == ()) and ploidy == self.shape[-1]:
+            # explicitly setting ploidy to max value
+            ploidy = None
+        elif ploidy is not None:
+            ploidy = np.asarray(ploidy, dtype=np.int8)
+            check_shape(ploidy, self.shape[:-1])
+            if np.any(ploidy > self.shape[-1]):
+                raise ValueError('Ploidy cannot exceed ploidy dimension size.')
+        self._ploidy = ploidy
 
     @property
     def n_allele_calls(self):
@@ -371,6 +387,64 @@ class Genotypes(NumpyArrayWrapper):
             out = self
             out.mask = None  # reset mask
 
+        return out
+
+    def is_allele(self):
+        """Find array values that are part of a genotype call and have
+        not been excluded by that genotype calls ploidy.
+
+        Returns
+        -------
+        out : ndarray, bool, shape (n_variants, n_samples, ploidy)
+            Array where elements are True if value is an allele call
+            or missing allele call in a genotype call.
+
+        Notes
+        -----
+        This method is intended for mixed-ploidy arrays with explicitly
+        set ploidy values.
+
+        """
+        if self._ploidy is None:
+            out = np.ones(self.shape, dtype=np.bool)
+        else:
+            max_ploidy = self.shape[-1]
+            allele_idx = np.tile(np.arange(max_ploidy), self._ploidy.shape + (1,))
+            out = allele_idx < self._ploidy[...,np.newaxis]
+
+        # handle mask
+        if self.mask is not None:
+            out &= ~self.mask[...,np.newaxis]
+        
+        return out
+
+    def is_not_allele(self):
+        """Find array values that are not part of a genotype call due to
+        being excluded by that genotype calls ploidy.
+
+        Returns
+        -------
+        out : ndarray, bool, shape (n_variants, n_samples, ploidy)
+            Array where elements are True if value is excluded by  by
+            it's genotypes ploidy.
+
+        Notes
+        -----
+        This method is intended for mixed-ploidy arrays with explicitly
+        set ploidy values.
+
+        """
+        if self._ploidy is None:
+            out = np.zeros(self.shape, dtype=np.bool)
+        else:
+            max_ploidy = self.shape[-1]
+            allele_idx = np.tile(np.arange(max_ploidy), self._ploidy.shape + (1,))
+            out = allele_idx >= self._ploidy[...,np.newaxis]
+
+        # handle mask
+        if self.mask is not None:
+            out &= ~self.mask[...,np.newaxis]
+        
         return out
 
     def is_called(self):
