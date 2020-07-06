@@ -227,6 +227,8 @@ class Genotypes(NumpyArrayWrapper):
             check_shape(ploidy, self.shape[:-1])
             if np.any(ploidy > self.shape[-1]):
                 raise ValueError('Ploidy cannot exceed ploidy dimension size.')
+            elif np.any(ploidy < 0):
+                raise ValueError('Ploidy cannot be negative.')
         self._ploidy = ploidy
 
     @property
