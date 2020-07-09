@@ -478,7 +478,10 @@ class Genotypes(NumpyArrayWrapper):
 
         """
 
-        out = np.all(self.values >= 0, axis=-1)
+        if self._ploidy is None:
+            out = np.all(self.values >= 0, axis=-1)
+        else:
+            out = np.all((self.values >= 0) | self.is_not_allele(), axis=-1)
 
         # handle mask
         if self.mask is not None:
@@ -515,7 +518,10 @@ class Genotypes(NumpyArrayWrapper):
 
         """
 
-        out = np.any(self.values < 0, axis=-1)
+        if self._ploidy is None:
+            out = np.any(self.values < 0, axis=-1)
+        else:
+            out = np.any((self.values < 0) & self.is_allele(), axis=-1)
 
         # handle mask
         if self.mask is not None:
