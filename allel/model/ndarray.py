@@ -571,9 +571,16 @@ class Genotypes(NumpyArrayWrapper):
             allele1 = self.values[..., 0, np.newaxis]
             other_alleles = self.values[..., 1:]
             tmp = (allele1 >= 0) & (allele1 == other_alleles)
-            out = np.all(tmp, axis=-1)
+            # handle mixed ploidy
+            if self._ploidy is not None:
+                tmp |= self.is_not_allele()[..., 1:]
         else:
-            out = np.all(self.values == allele, axis=-1)
+            tmp = self.values == allele
+            # handle mixed ploidy
+            if self._ploidy is not None:
+                tmp |= self.is_not_allele()
+
+        out = np.all(tmp, axis=-1)
 
         # handle mask
         if self.mask is not None:
@@ -645,6 +652,11 @@ class Genotypes(NumpyArrayWrapper):
         allele1 = self.values[..., 0, np.newaxis]
         other_alleles = self.values[..., 1:]
         tmp = (allele1 > 0) & (allele1 == other_alleles)
+
+        # handle mixed ploidy
+        if self._ploidy is not None:
+            tmp |= self.is_not_allele()[..., 1:]
+
         out = np.all(tmp, axis=-1)
 
         # handle mask
@@ -690,9 +702,16 @@ class Genotypes(NumpyArrayWrapper):
 
         allele1 = self.values[..., 0, np.newaxis]  # type: np.ndarray
         other_alleles = self.values[..., 1:]  # type: np.ndarray
-        out = np.all(self.values >= 0, axis=-1) & np.any(allele1 != other_alleles, axis=-1)
+        not_allele1 = allele1 != other_alleles
+
+        # handle mixed ploidy
+        if self._ploidy is not None:
+            not_allele1 &= self.is_allele()[..., 1:]
+
+        out = self.is_called() & np.any(not_allele1, axis=-1)
+        
         if allele is not None:
-            out &= np.any(self.values == allele, axis=-1)
+            out &= np.any((self.values == allele) & self.is_allele(), axis=-1)
 
         # handle mask
         if self.mask is not None:
