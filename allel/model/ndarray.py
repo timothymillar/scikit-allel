@@ -751,16 +751,25 @@ class Genotypes(NumpyArrayWrapper):
         array([False, False,  True])
 
         """
+        call_ploidy = len(call)
 
         # guard conditions
-        if not len(call) == self.shape[-1]:
+        if call_ploidy > self.shape[-1]:
             raise ValueError('invalid call ploidy: %s', repr(call))
-
-        if self.ndim == 2:
-            call = np.asarray(call)[np.newaxis, :]
+        
+        # genotype calls with matching ploidy
+        if (self._ploidy is None) and (self.ploidy == call_ploidy):
+            out = np.ones(self.shape[:-1]).astype(np.bool)
+        elif self._ploidy is None:
+            out = np.zeros(self.shape[:-1]).astype(np.bool)
         else:
-            call = np.asarray(call)[np.newaxis, np.newaxis, :]
-        out = np.all(self.values == call, axis=-1)
+            out = self.ploidy == call_ploidy
+        
+        # values of genotype calls with matching ploidy
+        vals = self.values[out][..., 0:call_ploidy]
+        
+        # check if values match call
+        out[out] &= np.all(vals == call, axis=-1)
 
         # handle mask
         if self.mask is not None:
