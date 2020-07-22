@@ -207,29 +207,12 @@ class Genotypes(NumpyArrayWrapper):
         check_integer_dtype(self.values)
         self._mask = None
         self._is_phased = None
-        self._ploidy = None
+        self._sitewise_ploidy = None
 
     @property
     def ploidy(self):
         """Sample ploidy."""
-        if self._ploidy is None:
-            return self.shape[-1]
-        else:
-            return self._ploidy
-
-    @ploidy.setter
-    def ploidy(self, ploidy):
-        if (np.shape(ploidy) == ()) and ploidy == self.shape[-1]:
-            # explicitly setting ploidy to max value
-            ploidy = None
-        elif ploidy is not None:
-            ploidy = np.asarray(ploidy, dtype=np.int8)
-            check_shape(ploidy, self.shape[:-1])
-            if np.any(ploidy > self.shape[-1]):
-                raise ValueError('Ploidy cannot exceed ploidy dimension size.')
-            elif np.any(ploidy < 0):
-                raise ValueError('Ploidy cannot be negative.')
-        self._ploidy = ploidy
+        return self.shape[-1]
 
     @property
     def n_allele_calls(self):
@@ -240,6 +223,21 @@ class Genotypes(NumpyArrayWrapper):
     def n_calls(self):
         """Total number of genotype calls."""
         return self.n_allele_calls // self.ploidy
+
+    @property
+    def sitewise_ploidy(self):
+        return self._sitewise_ploidy
+
+    @sitewise_ploidy.setter
+    def sitewise_ploidy(self, sitewise_ploidy):
+        if sitewise_ploidy is not None:
+            sitewise_ploidy = np.asarray(sitewise_ploidy, dtype=np.int8)
+            check_shape(sitewise_ploidy, self.shape[:-1])
+            if np.any(sitewise_ploidy > self.shape[-1]):
+                raise ValueError('Ploidy cannot exceed ploidy dimension size.')
+            elif np.any(sitewise_ploidy < 0):
+                raise ValueError('Ploidy cannot be negative.')
+        self._sitewise_ploidy = sitewise_ploidy
 
     @property
     def mask(self):
@@ -404,15 +402,15 @@ class Genotypes(NumpyArrayWrapper):
         Notes
         -----
         This method is intended for mixed-ploidy arrays with explicitly
-        set ploidy values.
+        set sitewise-ploidy values.
 
         """
-        if self._ploidy is None:
+        if self._sitewise_ploidy is None:
             out = np.ones(self.shape, dtype=np.bool)
         else:
             max_ploidy = self.shape[-1]
-            allele_idx = np.tile(np.arange(max_ploidy), self._ploidy.shape + (1,))
-            out = allele_idx < self._ploidy[...,np.newaxis]
+            allele_idx = np.tile(np.arange(max_ploidy), self._sitewise_ploidy.shape + (1,))
+            out = allele_idx < self._sitewise_ploidy[...,np.newaxis]
 
         # handle mask
         if self.mask is not None:
@@ -433,15 +431,15 @@ class Genotypes(NumpyArrayWrapper):
         Notes
         -----
         This method is intended for mixed-ploidy arrays with explicitly
-        set ploidy values.
+        set sitewise-ploidy values.
 
         """
-        if self._ploidy is None:
+        if self._sitewise_ploidy is None:
             out = np.zeros(self.shape, dtype=np.bool)
         else:
             max_ploidy = self.shape[-1]
-            allele_idx = np.tile(np.arange(max_ploidy), self._ploidy.shape + (1,))
-            out = allele_idx >= self._ploidy[...,np.newaxis]
+            allele_idx = np.tile(np.arange(max_ploidy), self._sitewise_ploidy.shape + (1,))
+            out = allele_idx >= self._sitewise_ploidy[...,np.newaxis]
 
         # handle mask
         if self.mask is not None:
@@ -478,7 +476,7 @@ class Genotypes(NumpyArrayWrapper):
 
         """
 
-        if self._ploidy is None:
+        if self._sitewise_ploidy is None:
             out = np.all(self.values >= 0, axis=-1)
         else:
             out = np.all((self.values >= 0) | self.is_not_allele(), axis=-1)
@@ -518,7 +516,7 @@ class Genotypes(NumpyArrayWrapper):
 
         """
 
-        if self._ploidy is None:
+        if self._sitewise_ploidy is None:
             out = np.any(self.values < 0, axis=-1)
         else:
             out = np.any((self.values < 0) & self.is_allele(), axis=-1)
@@ -572,12 +570,12 @@ class Genotypes(NumpyArrayWrapper):
             other_alleles = self.values[..., 1:]
             tmp = (allele1 >= 0) & (allele1 == other_alleles)
             # handle mixed ploidy
-            if self._ploidy is not None:
+            if self._sitewise_ploidy is not None:
                 tmp |= self.is_not_allele()[..., 1:]
         else:
             tmp = self.values == allele
             # handle mixed ploidy
-            if self._ploidy is not None:
+            if self._sitewise_ploidy is not None:
                 tmp |= self.is_not_allele()
 
         out = np.all(tmp, axis=-1)
@@ -654,7 +652,7 @@ class Genotypes(NumpyArrayWrapper):
         tmp = (allele1 > 0) & (allele1 == other_alleles)
 
         # handle mixed ploidy
-        if self._ploidy is not None:
+        if self._sitewise_ploidy is not None:
             tmp |= self.is_not_allele()[..., 1:]
 
         out = np.all(tmp, axis=-1)
@@ -705,7 +703,7 @@ class Genotypes(NumpyArrayWrapper):
         not_allele1 = allele1 != other_alleles
 
         # handle mixed ploidy
-        if self._ploidy is not None:
+        if self._sitewise_ploidy is not None:
             not_allele1 &= self.is_allele()[..., 1:]
 
         out = self.is_called() & np.any(not_allele1, axis=-1)
@@ -758,9 +756,9 @@ class Genotypes(NumpyArrayWrapper):
             raise ValueError('invalid call ploidy: %s', repr(call))
         
         # genotype calls with matching ploidy
-        if (self._ploidy is None) and (self.ploidy == call_ploidy):
+        if (self._sitewise_ploidy is None) and (self.ploidy == call_ploidy):
             out = np.ones(self.shape[:-1]).astype(np.bool)
-        elif self._ploidy is None:
+        elif self._sitewise_ploidy is None:
             out = np.zeros(self.shape[:-1]).astype(np.bool)
         else:
             out = self.ploidy == call_ploidy
